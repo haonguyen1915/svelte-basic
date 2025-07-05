@@ -1,0 +1,15 @@
+[
+  {
+    "section": "1-introduction",
+    "files": ["Introduction.svelte", "Nested.svelte"]
+  },
+  {
+    "section": "4-logic",
+    "files": [
+      "01-if-blocks.svelte",
+      "02-each-blocks.svelte",
+      "03-await-blocks.svelte",
+      "04-key-blocks.svelte"
+    ]
+  }
+]
