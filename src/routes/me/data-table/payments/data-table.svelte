@@ -23,7 +23,7 @@
 </script>
 
 <div class="rounded-md border-gray-300 text-gray-600 shadow-sm space-x-0.5 text-xs">
-    <Table.Root>
+    <Table.Root class="w-max border">
         <Table.Header>
             {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
                 <Table.Row class="border-b border-gray-500">
@@ -47,7 +47,7 @@
             {#each table.getRowModel().rows as row (row.id)}
                 <Table.Row data-state={row.getIsSelected() && "selected"} class="border-b border-gray-500">
                     {#each row.getVisibleCells() as cell, index (cell.id)}
-                        <Table.Cell class="py-0 px-3 text-xs font-mono text-gray-200 border-r border-gray-500 {index === 0 ? 'border-l' : ''}">
+                        <Table.Cell class="max-w-[250px] truncate overflow-hidden py-0 px-3 text-xs font-mono text-gray-200 border-r border-gray-500 {index === 0 ? 'border-l' : ''}">
                             <FlexRender
                                 content={cell.column.columnDef.cell}
                                 context={cell.getContext()}

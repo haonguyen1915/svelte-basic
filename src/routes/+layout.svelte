@@ -2,9 +2,11 @@
   let { children } = $props();
   
   import "../app.css";
+  import { Toaster } from 'svelte-sonner';
 </script>
-<main class="bg-primary">
+<main class="bg-gray-400">
   {@render children()}
+  <Toaster position="top-right" />
 </main>
 
 

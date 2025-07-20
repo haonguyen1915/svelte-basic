@@ -5,7 +5,7 @@ import type { ColumnDef } from "@tanstack/table-core";
 export type Payment = {
     id: string;
     amount: number;
-    status: "pending" | "processing" | "success" | "failed";
+    status: string;
     email: string;
 };
 

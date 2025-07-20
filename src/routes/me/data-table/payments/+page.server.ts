@@ -28,7 +28,7 @@ async function getPayments() {
         {
             id: "bhqecj4p",
             amount: 721,
-            status: "Failed",
+            status: "Success",
             email: "carmella@hotmail.com"
         }
     ];
