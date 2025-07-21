@@ -1,8 +1,8 @@
 <!-- TreeView.svelte -->
 <script lang="ts" module>
-    import { cn, type WithElementRef } from "$lib/utils.js";
-    import type { HTMLAttributes } from "svelte/elements";
-    import { type VariantProps, tv } from "tailwind-variants";
+    import {cn, type WithElementRef} from "$lib/utils.js";
+    import type {HTMLAttributes} from "svelte/elements";
+    import {type VariantProps, tv} from "tailwind-variants";
 
     export const treeViewVariants = tv({
         base: "select-none text-sm",
@@ -19,12 +19,12 @@
     });
 
     export const treeItemVariants = tv({
-        base: "flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+        base: "flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors",
         variants: {
             variant: {
-                default: "",
-                selected: "bg-primary text-primary-foreground",
-                active: "bg-accent text-accent-foreground",
+                default: "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-0",
+                active: "bg-accent text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
             },
             disabled: {
                 true: "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-inherit",
@@ -145,18 +145,18 @@
         }
     }
 
-    function findItemById(items: TreeItem<T>[], id: string): TreeItem<T> | null {
-        for (const item of items) {
-            if (item.id === id) {
-                return item;
-            }
-            if (item.children) {
-                const found = findItemById(item.children, id);
-                if (found) return found;
-            }
-        }
-        return null;
-    }
+    // function findItemById(items: TreeItem<T>[], id: string): TreeItem<T> | null {
+    //     for (const item of items) {
+    //         if (item.id === id) {
+    //             return item;
+    //         }
+    //         if (item.children) {
+    //             const found = findItemById(item.children, id);
+    //             if (found) return found;
+    //         }
+    //     }
+    //     return null;
+    // }
 
     function handleItemClick(item: TreeItem<T>, event: MouseEvent) {
         if (item.disabled) return;
@@ -204,7 +204,7 @@
         if (item.disabled) return;
 
         event.preventDefault();
-        onContextMenu?.({ item, event });
+        onContextMenu?.({item, event});
     }
 
     function handleKeyDown(item: TreeItem<T>, event: KeyboardEvent) {
@@ -234,6 +234,76 @@
                     onExpand?.(item, false);
                 }
                 break;
+            case 'ArrowDown': {
+                event.preventDefault();
+
+                // Find all visible items (expanded nodes and their children)
+                const visibleItems = getAllVisibleItems(items);
+
+                // Find current item index
+                const currentIndex = visibleItems.findIndex(visibleItem => {
+                    return multiSelect ? selectedSet.has(visibleItem.id) : selectedId === visibleItem.id;
+                });
+
+                // Select next item if available
+                if (currentIndex < visibleItems.length - 1) {
+                    const nextItem = visibleItems[currentIndex + 1];
+
+                    if (multiSelect) {
+                        // In multi-select mode, without modifier keys, move selection to next item
+                        if (!event.ctrlKey && !event.shiftKey) {
+                            const newSelectedSet = new Set<string>();
+                            newSelectedSet.add(nextItem.id);
+                            updateSelectedIds(newSelectedSet);
+                        }
+                    } else {
+                        // In single select mode
+                        selectedId = nextItem.id;
+                    }
+
+                    // Trigger select callback
+                    onSelect?.(nextItem, true);
+
+                    // Focus the item
+                    focusItemById(nextItem.id);
+                }
+                break;
+            }
+            case 'ArrowUp': {
+                event.preventDefault();
+
+                // Find all visible items (expanded nodes and their children)
+                const visibleItems = getAllVisibleItems(items);
+
+                // Find current item index
+                const currentIndex = visibleItems.findIndex(visibleItem => {
+                    return multiSelect ? selectedSet.has(visibleItem.id) : selectedId === visibleItem.id;
+                });
+
+                // Select previous item if available
+                if (currentIndex > 0) {
+                    const prevItem = visibleItems[currentIndex - 1];
+
+                    if (multiSelect) {
+                        // In multi-select mode, without modifier keys, move selection to previous item
+                        if (!event.ctrlKey && !event.shiftKey) {
+                            const newSelectedSet = new Set<string>();
+                            newSelectedSet.add(prevItem.id);
+                            updateSelectedIds(newSelectedSet);
+                        }
+                    } else {
+                        // In single select mode
+                        selectedId = prevItem.id;
+                    }
+
+                    // Trigger select callback
+                    onSelect?.(prevItem, true);
+
+                    // Focus the item
+                    focusItemById(prevItem.id);
+                }
+                break;
+            }
         }
     }
 
@@ -266,7 +336,7 @@
         }
 
         event.dataTransfer!.dropEffect = 'move';
-        dropPosition = { itemId: item.id, position };
+        dropPosition = {itemId: item.id, position};
     }
 
     function handleDragLeave(event: DragEvent) {
@@ -337,40 +407,95 @@
         if (position === 'inside' && !targetItem.children?.length && targetItem.children !== undefined) return false;
         return true;
     }
+
+    /**
+     * Collects all visible items in the tree based on current expanded state
+     * Used for keyboard navigation (ArrowUp/ArrowDown)
+     */
+    function getAllVisibleItems(items: TreeItem<T>[]): TreeItem<T>[] {
+        const visibleItems: TreeItem<T>[] = [];
+
+        function collectVisibleItems(items: TreeItem<T>[]) {
+            for (const item of items) {
+                visibleItems.push(item);
+
+                // If the item is expanded and has children, include those children too
+                if (item.children && expandedSet.has(item.id)) {
+                    collectVisibleItems(item.children);
+                }
+            }
+        }
+
+        collectVisibleItems(items);
+        return visibleItems;
+    }
+
+    /**
+     * Focuses a tree item by ID
+     * Used for keyboard navigation to ensure focused item is visible
+     */
+    function focusItemById(id: string) {
+        // Wait for the next tick to ensure DOM is updated
+        setTimeout(() => {
+            // Remove focus from any currently focused items
+            const focusedItems = ref?.querySelectorAll('[role="treeitem"] [role="button"]:focus');
+            if (focusedItems) {
+                focusedItems.forEach((el) => {
+                    if (el instanceof HTMLElement) {
+                        el.blur();
+                    }
+                });
+            }
+
+            // First try to find the item by its relation to the selected item
+            let itemElement = ref?.querySelector(`[role="treeitem"][data-item-id="${id}"] [role="button"]`) as HTMLElement;
+
+            // Fallback to finding any selected item if specific ID can't be found
+            if (!itemElement) {
+                itemElement = ref?.querySelector(`[role="treeitem"][aria-selected="true"] [role="button"]`) as HTMLElement;
+            }
+
+            if (itemElement instanceof HTMLElement) {
+                itemElement.focus();
+                // Ensure the item is visible in viewport if needed
+                itemElement.scrollIntoView({ block: "nearest" });
+            }
+        }, 0);
+    }
 </script>
 
 <div
-    bind:this={ref}
-    class={cn(treeViewVariants({ size }), className)}
-    role="tree"
-    aria-multiselectable={multiSelect}
-    {...restProps}
+        bind:this={ref}
+        class={cn(treeViewVariants({ size }), className)}
+        role="tree"
+        aria-multiselectable={multiSelect}
+        {...restProps}
 >
     {#each items as item}
         <TreeNode
-            {item}
-            level={0}
-            {expandedSet}
-            {selectedSet}
-            {selectedId}
-            {multiSelect}
-            {indentSize}
-            {draggedItemId}
-            {dropPosition}
-            {enableDragDrop}
-            {renderIcon}
-            {renderLabel}
-            {getItemVariant}
-            canDrop={canDrop || defaultCanDrop}
-            {defaultGetItemVariant}
-            {handleItemClick}
-            {handleContextMenu}
-            {handleKeyDown}
-            {handleDragStart}
-            {handleDragOver}
-            {handleDragLeave}
-            {handleDrop}
-            {handleDragEnd}
+                {item}
+                level={0}
+                {expandedSet}
+                {selectedSet}
+                {selectedId}
+                {multiSelect}
+                {indentSize}
+                {draggedItemId}
+                {dropPosition}
+                {enableDragDrop}
+                {renderIcon}
+                {renderLabel}
+                {getItemVariant}
+                canDrop={canDrop || defaultCanDrop}
+                {defaultGetItemVariant}
+                {handleItemClick}
+                {handleContextMenu}
+                {handleKeyDown}
+                {handleDragStart}
+                {handleDragOver}
+                {handleDragLeave}
+                {handleDrop}
+                {handleDragEnd}
         />
     {/each}
 </div>

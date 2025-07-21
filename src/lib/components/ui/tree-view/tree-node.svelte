@@ -4,6 +4,7 @@
     import { ChevronRight, Folder, FolderOpen, File } from "lucide-svelte";
     import { treeItemVariants, treeIconVariants } from "./tree-view.svelte";
     import type { TreeItem, TreeItemVariant } from "./tree-view.svelte";
+    import TreeNode from "./tree-node.svelte";  // Self-import for recursion
 
     interface TreeNodeProps<T extends Record<string, any>> {
         item: TreeItem<T>;
@@ -88,14 +89,14 @@
         return 'inside';
     }
 
-    function onDragOver(event: DragEvent) {
+    function onDragOver(event: DragEvent): void {
         event.preventDefault();
         const position = getDragOverPosition(event);
         dragOverPosition = position;
         handleDragOver(item, event, position);
     }
 
-    function onDragLeave(event: DragEvent) {
+    function onDragLeave(event: DragEvent): void {
         // Only clear if we're leaving the entire item area
         if (itemElement && !itemElement.contains(event.relatedTarget as Node)) {
             dragOverPosition = null;
@@ -124,6 +125,7 @@
     aria-selected={multiSelect ? selectedSet.has(item.id) : selectedId === item.id}
     aria-disabled={item.disabled}
     class="relative"
+    data-item-id={item.id}
 >
     <!-- Drop indicator above -->
     {#if isDropTarget && dropPosition?.position === 'above'}
@@ -171,13 +173,13 @@
             {@const isExpanded = expandedSet.has(item.id)}
             {@const IconComponent = iconRenderer(item, isExpanded)}
 
-            {#if IconComponent}
-                {#if typeof IconComponent === 'string'}
-                    <span class="size-4 shrink-0 flex items-center justify-center text-xs">
-                        {IconComponent}
-                    </span>
-                {:else}
-                    <svelte:component this={IconComponent} class="size-4 shrink-0" />
+            {#if typeof IconComponent === 'string'}
+                <span class="size-4 shrink-0 flex items-center justify-center text-xs">
+                    {IconComponent}
+                </span>
+            {:else}
+                {#if IconComponent}
+                    <IconComponent class="size-4 shrink-0" />
                 {/if}
             {/if}
         {/if}
@@ -213,7 +215,7 @@
     {#if item.children?.length && expandedSet.has(item.id)}
         <div>
             {#each item.children as child}
-                <svelte:self
+                <TreeNode
                     item={child}
                     level={level + 1}
                     {expandedSet}
