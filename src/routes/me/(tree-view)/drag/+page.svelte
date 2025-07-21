@@ -50,3 +50,9 @@
             onDragEnd={() => console.log('Drag ended')}
     />
 </div>
+<!--Debug info-->
+<div class="mt-4 p-4 bg-gray-100 rounded">
+    <h2 class="text-lg font-semibold mb-2">Current Tree Structure:</h2>
+    <pre class="text-xs overflow-auto">{JSON.stringify(treeData, null, 2)}</pre>
+    <pre class="text-xs overflow-auto">{JSON.stringify(expandedIds, null, 2)}</pre>
+</div>
