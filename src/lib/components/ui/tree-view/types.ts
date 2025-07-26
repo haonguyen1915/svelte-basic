@@ -9,6 +9,7 @@ export type TreeItem<T = Record<string, any>> = {
     children?: TreeItem<T>[];
     disabled?: boolean;
     data?: T;
+    isExpandable?: boolean; // Indicates if the item can have children even if children array is empty
 };
 
 export type TreeViewSize = VariantProps<typeof treeViewVariants>['size'];

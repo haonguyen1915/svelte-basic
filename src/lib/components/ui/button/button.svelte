@@ -51,7 +51,6 @@
 		children,
 		...restProps
 	}: ButtonProps = $props();
-	console.info("children", children);
 </script>
 
 {#if href}

@@ -1,6 +1,6 @@
 <script lang="ts">
     import TreeView from "$lib/components/ui/tree-view/tree-view.svelte";
-    import type { TreeItem, ContextMenuEvent, TreeItemVariant } from "$lib/components/ui/tree-view/tree-view.svelte";
+    import type {TreeItem, ContextMenuEvent, TreeItemVariant} from "$lib/components/ui/tree-view/tree-view.svelte";
     import {
         FileText,
         Image,
@@ -11,6 +11,11 @@
         Trash,
         Star
     } from "lucide-svelte";
+    import {onMount, onDestroy} from "svelte";
+
+    // Import context menu components from the library
+    import * as ContextMenu from "$lib/components/ui/context-menu";
+    import {toast} from "svelte-sonner";
 
     interface CustomData {
         fileType: string;
@@ -25,7 +30,7 @@
             id: "documents",
             label: "Documents",
             icon: FileText,
-            data: { fileType: "folder", size: 0, permissions: ["read", "write"] },
+            data: {fileType: "folder", size: 0, permissions: ["read", "write"]},
             children: [
                 {
                     id: "important-doc",
@@ -33,14 +38,26 @@
                     data: {
                         fileType: "pdf",
                         size: 2048576,
-                        isImportant: true,
+                        isImportant: false,
                         permissions: ["read"]
                     }
                 },
                 {
                     id: "draft",
                     label: "Draft.docx",
-                    data: { fileType: "docx", size: 1024000, permissions: ["read", "write"] }
+                    data: {fileType: "docx", size: 1024000, permissions: ["read", "write"]}
+                },
+                {
+                    id: "archive",
+                    label: "Archive.zip",
+                    icon: Archive,
+                    data: {fileType: "archive", size: 52428800, permissions: ["read"]}
+                },
+                {
+                    id: "trash",
+                    label: "Trash",
+                    icon: Trash,
+                    data: {fileType: "folder", size: 0, permissions: []}
                 }
             ]
         },
@@ -48,7 +65,7 @@
             id: "media",
             label: "Media Files",
             icon: Image,
-            data: { fileType: "folder", size: 0, permissions: ["read", "write"] },
+            data: {fileType: "folder", size: 0, permissions: ["read", "write"]},
             children: [
                 {
                     id: "photo1",
@@ -65,7 +82,7 @@
                     id: "video1",
                     label: "Video.mp4",
                     icon: Video,
-                    data: { fileType: "video", size: 104857600, permissions: ["read"] }
+                    data: {fileType: "video", size: 104857600, permissions: ["read"]}
                 }
             ]
         },
@@ -74,7 +91,7 @@
             label: "System Files",
             icon: Settings,
             disabled: true,
-            data: { fileType: "folder", size: 0, permissions: [] }
+            data: {fileType: "folder", size: 0, permissions: []}
         }
     ];
 
@@ -82,11 +99,18 @@
     let selectedId = $state<string>();
     let selectedIds = $state(new Set<string>());
     let expandedIds = $state(new Set(["documents", "media"]));
+    let contextMenuData = $state<ContextMenuEvent<CustomData> | null>(null);
+
+    // Keep track of where to position the menu
+    let menuX = $state(0);
+    let menuY = $state(0);
+    let showMenu = $state(false);
+    let anchorEl = $state<HTMLElement | null>(null);
 
     // Configuration
     let multiSelect = $state(false);
     let size: "sm" | "default" | "lg" = $state("default");
-    let indentSize = $state(1.5);
+    let indentSize = $state(0);
 
     // Event handlers
     function handleSelect(item: TreeItem<CustomData>, selected: boolean) {
@@ -115,9 +139,26 @@
     function handleContextMenu(event: ContextMenuEvent<CustomData>) {
         console.log("Context menu for:", event.item.label, "at", event.event.clientX, event.event.clientY);
 
-        // You could show a custom context menu here
-        showCustomContextMenu(event);
+        // Prevent the default browser context menu
+        event.event.preventDefault();
+
+        // Create a small invisible anchor element at the position of the right-click
+        const anchor = document.createElement('div');
+        anchor.style.position = 'absolute';
+        anchor.style.left = `${event.event.clientX}px`;
+        anchor.style.top = `${event.event.clientY}px`;
+        anchor.style.width = '0px';
+        anchor.style.height = '0px';
+        document.body.appendChild(anchor);
+
+        // Set the anchor element
+        anchorEl = anchor;
+
+        // Update context menu state
+        showMenu = true;
+        contextMenuData = event;
     }
+
 
     // Custom rendering functions
     function renderIcon(item: TreeItem<CustomData>, isExpanded?: boolean) {
@@ -189,48 +230,6 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    function showCustomContextMenu(event: ContextMenuEvent<CustomData>) {
-        // Custom context menu implementation
-        const menu = document.createElement('div');
-        menu.className = 'context-menu';
-        menu.style.position = 'fixed';
-        menu.style.left = event.event.clientX + 'px';
-        menu.style.top = event.event.clientY + 'px';
-        menu.style.background = 'white';
-        menu.style.border = '1px solid #ccc';
-        menu.style.borderRadius = '4px';
-        menu.style.padding = '8px';
-        menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-        menu.style.zIndex = '1000';
-
-        const actions = ['Open', 'Copy', 'Delete', 'Properties'];
-        actions.forEach(action => {
-            const item = document.createElement('div');
-            item.textContent = action;
-            item.style.padding = '4px 8px';
-            item.style.cursor = 'pointer';
-            item.onmouseenter = () => item.style.background = '#f0f0f0';
-            item.onmouseleave = () => item.style.background = 'white';
-            item.onclick = () => {
-                console.log(`${action} clicked for:`, event.item.label);
-                document.body.removeChild(menu);
-            };
-            menu.appendChild(item);
-        });
-
-        document.body.appendChild(menu);
-
-        // Remove menu when clicking elsewhere
-        setTimeout(() => {
-            document.addEventListener('click', function removeMenu() {
-                if (document.body.contains(menu)) {
-                    document.body.removeChild(menu);
-                }
-                document.removeEventListener('click', removeMenu);
-            });
-        }, 0);
-    }
-
     // Toggle functions for demo
     function toggleMultiSelect() {
         multiSelect = !multiSelect;
@@ -247,6 +246,38 @@
         const currentIndex = sizes.indexOf(size);
         size = sizes[(currentIndex + 1) % sizes.length];
     }
+
+    function clickOutside(node: HTMLElement, callback: () => void) {
+        const handleClick = (event: MouseEvent) => {
+            if (!node.contains(event.target as Node)) {
+                callback();
+            }
+        };
+
+        document.addEventListener("click", handleClick, true);
+
+        return {
+            destroy() {
+                document.removeEventListener("click", handleClick, true);
+            }
+        };
+    }
+
+    // Remove the anchor element when menu is closed
+    function closeMenu() {
+        showMenu = false;
+        if (anchorEl && anchorEl.parentNode) {
+            anchorEl.parentNode.removeChild(anchorEl);
+            anchorEl = null;
+        }
+    }
+
+    // Clean up any anchor elements when component is destroyed
+    onDestroy(() => {
+        if (anchorEl && anchorEl.parentNode) {
+            anchorEl.parentNode.removeChild(anchorEl);
+        }
+    });
 </script>
 
 <!-- Demo Controls -->
@@ -259,7 +290,7 @@
     </button>
     <label class="flex items-center gap-2">
         Indent Size:
-        <input type="range" bind:value={indentSize} min="0.5" max="3" step="0.5" class="w-20" />
+        <input type="range" bind:value={indentSize} min="0.0" max="3" step="0.5" class="w-20"/>
         {indentSize}rem
     </label>
 </div>
@@ -279,8 +310,34 @@
         {renderIcon}
         {renderLabel}
         {getItemVariant}
-        class="border rounded-lg p-4 max-w-md bg-white"
+        class="border rounded-lg p-2 max-w-md bg-white"
 />
+
+<!-- Context Menu using imperative API -->
+{#if showMenu && contextMenuData && anchorEl}
+    <ContextMenu.Root open={showMenu}>
+        <ContextMenu.Content
+                customAnchor={anchorEl}
+                onInteractOutside={() => closeMenu()}
+                interactOutsideBehavior="close"
+                onclick={() => closeMenu()}
+                class="bg-white border rounded-lg shadow-lg w-48 p-2 context-menu-content"
+        >
+            <ContextMenu.Item onclick={() => toast.success('Open clicked')}>
+                Open
+            </ContextMenu.Item>
+            <ContextMenu.Item onclick={() => toast.success('Copy clicked')}>
+                Copy
+            </ContextMenu.Item>
+            <ContextMenu.Item onclick={() => toast.success('Delete clicked')}>
+                Delete
+            </ContextMenu.Item>
+            <ContextMenu.Item onclick={() => toast.success('Properties clicked')}>
+                Properties
+            </ContextMenu.Item>
+        </ContextMenu.Content>
+    </ContextMenu.Root>
+{/if}
 
 <!-- Debug Info -->
 <div class="mt-4 p-4 bg-gray-100 rounded text-sm">
@@ -291,4 +348,7 @@
     <p><strong>Multi-select:</strong> {multiSelect}</p>
     <p><strong>Size:</strong> {size}</p>
     <p><strong>Indent Size:</strong> {indentSize}rem</p>
+    <p><strong>contextMenuData:</strong> {JSON.stringify(contextMenuData)}</p>
+    <p><strong>Menu Position:</strong> ({menuX}, {menuY})</p>
+    <p><strong>Show Menu:</strong> {showMenu ? 'Yes' : 'No'}</p>
 </div>

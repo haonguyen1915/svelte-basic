@@ -1,77 +1,83 @@
 <!-- TreeView.svelte -->
 <script lang="ts" module>
-    import {cn, type WithElementRef} from "$lib/utils.js";
-    import type {HTMLAttributes} from "svelte/elements";
-    import {type VariantProps, tv} from "tailwind-variants";
+    import { cn, type WithElementRef } from '$lib/utils.js';
+    import type { HTMLAttributes } from 'svelte/elements';
+    import { type VariantProps, tv } from 'tailwind-variants';
 
     export const treeViewVariants = tv({
-        base: "select-none text-sm",
+        base: 'select-none text-sm',
         variants: {
             size: {
-                sm: "text-xs",
-                default: "text-sm",
-                lg: "text-base",
-            },
+                sm: 'text-xs',
+                default: 'text-sm',
+                lg: 'text-base'
+            }
         },
         defaultVariants: {
-            size: "default",
-        },
+            size: 'default'
+        }
     });
 
     export const treeItemVariants = tv({
-        base: "flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors",
+        base: 'flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors',
         variants: {
             variant: {
-                default: "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-0",
-                active: "bg-accent text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                default:
+                    'hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+                selected:
+                    'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:outline-none focus:ring-0',
+                active:
+                    'bg-accent text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1'
             },
             disabled: {
-                true: "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-inherit",
-            },
+                true: 'opacity-50 cursor-not-allowed hover:bg-transparent hover:text-inherit'
+            }
         },
         defaultVariants: {
-            variant: "default",
-        },
+            variant: 'default'
+        }
     });
 
     export const treeIconVariants = tv({
-        base: "transition-transform duration-200 shrink-0",
+        base: 'transition-transform duration-200 shrink-0',
         variants: {
             expanded: {
-                true: "rotate-90",
-                false: "rotate-0",
-            },
+                true: 'rotate-90',
+                false: 'rotate-0'
+            }
         },
         defaultVariants: {
-            expanded: false,
-        },
+            expanded: false
+        }
     });
 
-    export type TreeItem<T = Record<string, any>> = {
+    export type TreeItem<T = Record<string, unknown>> = {
         id: string;
         label: string;
-        icon?: any; // Component constructor or string
+        icon?: unknown; // Component constructor or string
         children?: TreeItem<T>[];
         disabled?: boolean;
         data?: T; // Generic data payload
+        isExpandable?: boolean; // Indicates if the item can have children even if the children array is empty
     };
 
-    export type TreeViewSize = VariantProps<typeof treeViewVariants>["size"];
-    export type TreeItemVariant = VariantProps<typeof treeItemVariants>["variant"];
+    export type TreeViewSize = VariantProps<typeof treeViewVariants>['size'];
+    export type TreeItemVariant = VariantProps<typeof treeItemVariants>['variant'];
 
-    export type ContextMenuEvent<T = Record<string, any>> = {
+    export type ContextMenuEvent<T = Record<string, unknown>> = {
         item: TreeItem<T>;
         event: MouseEvent;
     };
 
-    export type DragDropData<T = Record<string, any>> = {
+    export type DragDropData<T = Record<string, unknown>> = {
         draggedItem: TreeItem<T>;
         targetItem: TreeItem<T>;
         position: 'above' | 'below' | 'inside';
     };
 
-    export type TreeViewProps<T = Record<string, any>> = WithElementRef<HTMLAttributes<HTMLDivElement>> & {
+    export type TreeViewProps<T = Record<string, unknown>> = WithElementRef<
+        HTMLAttributes<HTMLDivElement>
+    > & {
         items: TreeItem<T>[];
         size?: TreeViewSize;
         selectedId?: string;
@@ -86,20 +92,27 @@
         onDragStart?: (item: TreeItem<T>) => void;
         onDragEnd?: () => void;
         onDrop?: (data: DragDropData<T>) => void;
-        canDrop?: (draggedItem: TreeItem<T>, targetItem: TreeItem<T>, position: 'above' | 'below' | 'inside') => boolean;
+        canDrop?: (
+            draggedItem: TreeItem<T>,
+            targetItem: TreeItem<T>,
+            position: 'above' | 'below' | 'inside'
+        ) => boolean;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         renderIcon?: (item: TreeItem<T>, isExpanded?: boolean) => any;
-        renderLabel?: (item: TreeItem<T>) => string | { render: () => any };
+        renderLabel?: (item: TreeItem<T>) => string | { render: () => unknown };
         getItemVariant?: (item: TreeItem<T>) => TreeItemVariant;
     };
 </script>
 
-<script lang="ts" generics="T extends Record<string, any>">
-    import TreeNode from "./tree-node.svelte";
+<script lang="ts" generics="T extends Record<string, unknown>">
+    import TreeNode from './tree-node.svelte';
+    import { File, Folder, FolderOpen } from 'lucide-svelte';
+    import { SvelteSet } from 'svelte/reactivity';
 
     let {
         class: className,
         items = [],
-        size = "default",
+        size = 'default',
         selectedId = $bindable(),
         expandedIds = $bindable(new Set()),
         multiSelect = false,
@@ -123,7 +136,8 @@
     // Drag and drop state
     let draggedItemId: string | null = $state(null);
     let draggedItem: TreeItem<T> | null = $state(null);
-    let dropPosition: { itemId: string; position: 'above' | 'below' | 'inside' } | null = $state(null);
+    let dropPosition: { itemId: string; position: 'above' | 'below' | 'inside' } | null =
+        $state(null);
 
     // Normalize expandedIds and selectedIds to Sets
     const expandedSet = $derived(expandedIds instanceof Set ? expandedIds : new Set(expandedIds));
@@ -164,7 +178,7 @@
         // Handle expansion for items with children
         if (item.children?.length) {
             const isExpanded = expandedSet.has(item.id);
-            const newExpandedSet = new Set(expandedSet);
+            const newExpandedSet = new SvelteSet(expandedSet);
 
             if (isExpanded) {
                 newExpandedSet.delete(item.id);
@@ -178,7 +192,7 @@
 
         // Handle selection
         if (multiSelect) {
-            const newSelectedSet = new Set(selectedSet);
+            const newSelectedSet = new SvelteSet(selectedSet);
             const isSelected = newSelectedSet.has(item.id);
 
             if (event.ctrlKey || event.metaKey) {
@@ -204,7 +218,7 @@
         if (item.disabled) return;
 
         event.preventDefault();
-        onContextMenu?.({item, event});
+        onContextMenu?.({ item, event });
     }
 
     function handleKeyDown(item: TreeItem<T>, event: KeyboardEvent) {
@@ -214,12 +228,13 @@
             case 'Enter':
             case ' ':
                 event.preventDefault();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 handleItemClick(item, event as any);
                 break;
             case 'ArrowRight':
                 if (item.children?.length && !expandedSet.has(item.id)) {
                     event.preventDefault();
-                    const newExpandedSet = new Set(expandedSet);
+                    const newExpandedSet = new SvelteSet(expandedSet);
                     newExpandedSet.add(item.id);
                     updateExpandedIds(newExpandedSet);
                     onExpand?.(item, true);
@@ -228,7 +243,7 @@
             case 'ArrowLeft':
                 if (item.children?.length && expandedSet.has(item.id)) {
                     event.preventDefault();
-                    const newExpandedSet = new Set(expandedSet);
+                    const newExpandedSet = new SvelteSet(expandedSet);
                     newExpandedSet.delete(item.id);
                     updateExpandedIds(newExpandedSet);
                     onExpand?.(item, false);
@@ -241,7 +256,7 @@
                 const visibleItems = getAllVisibleItems(items);
 
                 // Find current item index
-                const currentIndex = visibleItems.findIndex(visibleItem => {
+                const currentIndex = visibleItems.findIndex((visibleItem) => {
                     return multiSelect ? selectedSet.has(visibleItem.id) : selectedId === visibleItem.id;
                 });
 
@@ -250,9 +265,9 @@
                     const nextItem = visibleItems[currentIndex + 1];
 
                     if (multiSelect) {
-                        // In multi-select mode, without modifier keys, move selection to next item
+                        // In multi-select mode, without modifier keys, move selection to the next item
                         if (!event.ctrlKey && !event.shiftKey) {
-                            const newSelectedSet = new Set<string>();
+                            const newSelectedSet = new SvelteSet<string>();
                             newSelectedSet.add(nextItem.id);
                             updateSelectedIds(newSelectedSet);
                         }
@@ -276,7 +291,7 @@
                 const visibleItems = getAllVisibleItems(items);
 
                 // Find current item index
-                const currentIndex = visibleItems.findIndex(visibleItem => {
+                const currentIndex = visibleItems.findIndex((visibleItem) => {
                     return multiSelect ? selectedSet.has(visibleItem.id) : selectedId === visibleItem.id;
                 });
 
@@ -287,7 +302,7 @@
                     if (multiSelect) {
                         // In multi-select mode, without modifier keys, move selection to previous item
                         if (!event.ctrlKey && !event.shiftKey) {
-                            const newSelectedSet = new Set<string>();
+                            const newSelectedSet = new SvelteSet<string>();
                             newSelectedSet.add(prevItem.id);
                             updateSelectedIds(newSelectedSet);
                         }
@@ -320,12 +335,16 @@
         onDragStart?.(item);
     }
 
-    function handleDragOver(item: TreeItem<T>, event: DragEvent, position: 'above' | 'below' | 'inside') {
+    function handleDragOver(
+        item: TreeItem<T>,
+        event: DragEvent,
+        position: 'above' | 'below' | 'inside'
+    ) {
         if (!enableDragDrop || !draggedItem || draggedItem.id === item.id) return;
 
         event.preventDefault();
 
-        // Check if drop is allowed
+        // Check if the drop is allowed
         if (canDrop && !canDrop(draggedItem, item, position)) {
             return;
         }
@@ -336,7 +355,7 @@
         }
 
         event.dataTransfer!.dropEffect = 'move';
-        dropPosition = {itemId: item.id, position};
+        dropPosition = { itemId: item.id, position };
     }
 
     function handleDragLeave(event: DragEvent) {
@@ -351,7 +370,7 @@
 
         event.preventDefault();
 
-        // Check if drop is allowed
+        // Check if the drop is allowed
         if (canDrop && !canDrop(draggedItem, item, position)) {
             return;
         }
@@ -396,20 +415,38 @@
 
     function defaultGetItemVariant(item: TreeItem<T>): TreeItemVariant {
         if (multiSelect) {
-            return selectedSet.has(item.id) ? "selected" : "default";
+            return selectedSet.has(item.id) ? 'selected' : 'default';
         }
-        return selectedId === item.id ? "selected" : "default";
+        return selectedId === item.id ? 'selected' : 'default';
     }
 
-    function defaultCanDrop(draggedItem: TreeItem<T>, targetItem: TreeItem<T>, position: 'above' | 'below' | 'inside'): boolean {
+    function defaultCanDrop(
+        draggedItem: TreeItem<T>,
+        targetItem: TreeItem<T>,
+        position: 'above' | 'below' | 'inside'
+    ): boolean {
         // Default: allow all drops except into disabled items or when dropping inside non-folder items
         if (targetItem.disabled) return false;
-        if (position === 'inside' && !targetItem.children?.length && targetItem.children !== undefined) return false;
-        return true;
+        return !(
+            position === 'inside' &&
+            !targetItem.children?.length &&
+            targetItem.children !== undefined
+        );
+    }
+
+    function defaultRenderIcon(item: TreeItem<T>, isExpanded = false) {
+        if (item.icon) {
+            return item.icon;
+        }
+
+        if (item.children?.length) {
+            return isExpanded ? FolderOpen : Folder;
+        }
+        return File;
     }
 
     /**
-     * Collects all visible items in the tree based on current expanded state
+     * Collects all visible items in the tree based on the current expanded state
      * Used for keyboard navigation (ArrowUp/ArrowDown)
      */
     function getAllVisibleItems(items: TreeItem<T>[]): TreeItem<T>[] {
@@ -435,7 +472,7 @@
      * Used for keyboard navigation to ensure focused item is visible
      */
     function focusItemById(id: string) {
-        // Wait for the next tick to ensure DOM is updated
+        // Wait for the next tick to ensure the DOM is updated
         setTimeout(() => {
             // Remove focus from any currently focused items
             const focusedItems = ref?.querySelectorAll('[role="treeitem"] [role="button"]:focus');
@@ -448,17 +485,21 @@
             }
 
             // First try to find the item by its relation to the selected item
-            let itemElement = ref?.querySelector(`[role="treeitem"][data-item-id="${id}"] [role="button"]`) as HTMLElement;
+            let itemElement = ref?.querySelector(
+                `[role="treeitem"][data-item-id="${id}"] [role="button"]`
+            ) as HTMLElement;
 
-            // Fallback to finding any selected item if specific ID can't be found
+            // Fallback to finding any selected item if the specific ID can't be found
             if (!itemElement) {
-                itemElement = ref?.querySelector(`[role="treeitem"][aria-selected="true"] [role="button"]`) as HTMLElement;
+                itemElement = ref?.querySelector(
+                    `[role="treeitem"][aria-selected="true"] [role="button"]`
+                ) as HTMLElement;
             }
 
             if (itemElement instanceof HTMLElement) {
                 itemElement.focus();
                 // Ensure the item is visible in viewport if needed
-                itemElement.scrollIntoView({ block: "nearest" });
+                itemElement.scrollIntoView({ block: 'nearest' });
             }
         }, 0);
     }
@@ -471,7 +512,7 @@
         aria-multiselectable={multiSelect}
         {...restProps}
 >
-    {#each items as item}
+    {#each items as item (item.id)}
         <TreeNode
                 {item}
                 level={0}
@@ -483,11 +524,10 @@
                 {draggedItemId}
                 {dropPosition}
                 {enableDragDrop}
-                {renderIcon}
+                renderIcon={renderIcon || defaultRenderIcon}
                 {renderLabel}
-                {getItemVariant}
+                getItemVariant={getItemVariant || defaultGetItemVariant}
                 canDrop={canDrop || defaultCanDrop}
-                {defaultGetItemVariant}
                 {handleItemClick}
                 {handleContextMenu}
                 {handleKeyDown}

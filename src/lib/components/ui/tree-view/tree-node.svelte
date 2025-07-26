@@ -1,12 +1,12 @@
 <!-- TreeNode.svelte -->
-<script lang="ts" generics="T extends Record<string, any>">
-    import { cn } from "$lib/utils.js";
-    import { ChevronRight, Folder, FolderOpen, File } from "lucide-svelte";
-    import { treeItemVariants, treeIconVariants } from "./tree-view.svelte";
-    import type { TreeItem, TreeItemVariant } from "./tree-view.svelte";
-    import TreeNode from "./tree-node.svelte";  // Self-import for recursion
+<script lang="ts" generics="T extends Record<string, unknown>">
+    import { cn } from '$lib/utils.js';
+    import { ChevronRight } from 'lucide-svelte';
+    import { treeItemVariants, treeIconVariants } from './tree-view.svelte';
+    import type { TreeItem, TreeItemVariant } from './tree-view.svelte';
+    import TreeNode from './tree-node.svelte'; // Self-import for recursion
 
-    interface TreeNodeProps<T extends Record<string, any>> {
+    interface TreeNodeProps<T extends Record<string, unknown>> {
         item: TreeItem<T>;
         level: number;
         expandedSet: Set<string>;
@@ -17,18 +17,30 @@
         draggedItemId: string | null;
         dropPosition: { itemId: string; position: 'above' | 'below' | 'inside' } | null;
         enableDragDrop: boolean;
-        renderIcon?: (item: TreeItem<T>, isExpanded?: boolean) => any;
-        renderLabel?: (item: TreeItem<T>) => string | { render: () => any };
-        getItemVariant?: (item: TreeItem<T>) => TreeItemVariant;
-        canDrop?: (draggedItem: TreeItem<T>, targetItem: TreeItem<T>, position: 'above' | 'below' | 'inside') => boolean;
-        defaultGetItemVariant: (item: TreeItem<T>) => TreeItemVariant;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        renderIcon: (item: TreeItem<T>, isExpanded?: boolean) => any;
+        renderLabel?: (item: TreeItem<T>) => string | { render: () => unknown };
+        getItemVariant: (item: TreeItem<T>) => TreeItemVariant;
+        canDrop?: (
+            draggedItem: TreeItem<T>,
+            targetItem: TreeItem<T>,
+            position: 'above' | 'below' | 'inside'
+        ) => boolean;
         handleItemClick: (item: TreeItem<T>, event: MouseEvent) => void;
         handleContextMenu: (item: TreeItem<T>, event: MouseEvent) => void;
         handleKeyDown: (item: TreeItem<T>, event: KeyboardEvent) => void;
         handleDragStart: (item: TreeItem<T>, event: DragEvent) => void;
-        handleDragOver: (item: TreeItem<T>, event: DragEvent, position: 'above' | 'below' | 'inside') => void;
+        handleDragOver: (
+            item: TreeItem<T>,
+            event: DragEvent,
+            position: 'above' | 'below' | 'inside'
+        ) => void;
         handleDragLeave: (event: DragEvent) => void;
-        handleDrop: (item: TreeItem<T>, event: DragEvent, position: 'above' | 'below' | 'inside') => void;
+        handleDrop: (
+            item: TreeItem<T>,
+            event: DragEvent,
+            position: 'above' | 'below' | 'inside'
+        ) => void;
         handleDragEnd: () => void;
     }
 
@@ -47,7 +59,6 @@
         renderLabel,
         getItemVariant,
         canDrop,
-        defaultGetItemVariant,
         handleItemClick,
         handleContextMenu,
         handleKeyDown,
@@ -61,21 +72,6 @@
     let dragOverPosition: 'above' | 'below' | 'inside' | null = $state(null);
     let itemElement: HTMLDivElement | null = $state(null);
 
-    function defaultRenderIcon(item: TreeItem<T>, isExpanded = false) {
-        if (item.icon) {
-            return item.icon;
-        }
-
-        if (item.children?.length) {
-            return isExpanded ? FolderOpen : Folder;
-        }
-        return File;
-    }
-
-    function defaultRenderLabel(item: TreeItem<T>) {
-        return item.label;
-    }
-
     function getDragOverPosition(event: DragEvent): 'above' | 'below' | 'inside' {
         if (!itemElement) return 'inside';
 
@@ -84,8 +80,8 @@
         const height = rect.height;
 
         if (y < height * 0.25) return 'above';
-        if (y > height * 0.75 && !item.children?.length) return 'below';
-        if (y > height * 0.75 && item.children?.length) return 'inside';
+        if (y > height * 0.75 && !item.children?.length && !item.isExpandable) return 'below';
+        if (y > height * 0.75 && (item.children?.length || item.isExpandable)) return 'inside';
         return 'inside';
     }
 
@@ -120,74 +116,73 @@
 </script>
 
 <div
-    role="treeitem"
-    aria-expanded={item.children?.length ? expandedSet.has(item.id) : undefined}
-    aria-selected={multiSelect ? selectedSet.has(item.id) : selectedId === item.id}
-    aria-disabled={item.disabled}
-    class="relative"
-    data-item-id={item.id}
+        role="treeitem"
+        aria-expanded={item.children?.length ? expandedSet.has(item.id) : undefined}
+        aria-selected={multiSelect ? selectedSet.has(item.id) : selectedId === item.id}
+        aria-disabled={item.disabled}
+        class="relative"
+        data-item-id={item.id}
 >
     <!-- Drop indicator above -->
     {#if isDropTarget && dropPosition?.position === 'above'}
-        <div class="absolute top-0 left-0 right-0 h-0.5 bg-primary z-10" style="left: {level * indentSize + 0.5}rem"></div>
+        <div
+                class="absolute top-0 right-0 left-0 z-10 h-0.5 bg-primary"
+                style="left: {level * indentSize + 0.5}rem"
+        ></div>
     {/if}
 
     <div
-        bind:this={itemElement}
-        class={cn(
-            treeItemVariants({
-                variant: getItemVariant ? getItemVariant(item) : defaultGetItemVariant(item),
-                disabled: item.disabled
-            }),
-            isDragged && "opacity-50",
-            isDropTarget && dropPosition?.position === 'inside' && "ring-2 ring-primary",
-            "group"
-        )}
-        style="padding-left: {level * indentSize + 0.5}rem"
-        draggable={enableDragDrop && !item.disabled}
-        onclick={(e) => handleItemClick(item, e)}
-        oncontextmenu={(e) => handleContextMenu(item, e)}
-        onkeydown={(e) => handleKeyDown(item, e)}
-        ondragstart={enableDragDrop ? (e) => handleDragStart(item, e) : undefined}
-        ondragover={enableDragDrop ? onDragOver : undefined}
-        ondragleave={enableDragDrop ? onDragLeave : undefined}
-        ondrop={enableDragDrop ? onDrop : undefined}
-        ondragend={enableDragDrop ? handleDragEnd : undefined}
-        tabindex={item.disabled ? -1 : 0}
-        role="button"
-        aria-label={item.label}
+            bind:this={itemElement}
+            class={cn(
+			treeItemVariants({
+				variant: getItemVariant(item),
+				disabled: item.disabled
+			}),
+			isDragged && 'opacity-50',
+			isDropTarget && dropPosition?.position === 'inside' && 'ring-2 ring-primary',
+			'group'
+		)}
+            style="padding-left: {level * indentSize + 0.5}rem"
+            draggable={enableDragDrop && !item.disabled}
+            onclick={(e) => handleItemClick(item, e)}
+            oncontextmenu={(e) => handleContextMenu(item, e)}
+            onkeydown={(e) => handleKeyDown(item, e)}
+            ondragstart={enableDragDrop ? (e) => handleDragStart(item, e) : undefined}
+            ondragover={enableDragDrop ? onDragOver : undefined}
+            ondragleave={enableDragDrop ? onDragLeave : undefined}
+            ondrop={enableDragDrop ? onDrop : undefined}
+            ondragend={enableDragDrop ? handleDragEnd : undefined}
+            tabindex={item.disabled ? -1 : 0}
+            role="button"
+            aria-label={item.label}
     >
         <!-- Expand/Collapse Icon -->
-        {#if item.children?.length}
+        {#if item.children?.length || item.isExpandable}
             {@const isExpanded = expandedSet.has(item.id)}
-            <ChevronRight
-                class={cn(treeIconVariants({ expanded: isExpanded }), "size-4")}
-            />
+            <ChevronRight class={cn(treeIconVariants({ expanded: isExpanded }), 'size-4')} />
         {:else}
             <div class="size-4"></div>
         {/if}
 
         <!-- Item Icon -->
         {#if renderIcon || item.icon || item.children?.length}
-            {@const iconRenderer = renderIcon || defaultRenderIcon}
             {@const isExpanded = expandedSet.has(item.id)}
-            {@const IconComponent = iconRenderer(item, isExpanded)}
+            {@const iconResult = renderIcon(item, isExpanded)}
 
-            {#if typeof IconComponent === 'string'}
-                <span class="size-4 shrink-0 flex items-center justify-center text-xs">
-                    {IconComponent}
-                </span>
-            {:else}
-                {#if IconComponent}
-                    <IconComponent class="size-4 shrink-0" />
-                {/if}
+            {#if typeof iconResult === 'string'}
+				<span class="flex size-4 shrink-0 items-center justify-center text-xs">
+					{iconResult}
+				</span>
+            {:else if iconResult && typeof iconResult !== 'string'}
+                {@const IconComp = iconResult}
+                <IconComp class="size-4 shrink-0" />
             {/if}
         {/if}
 
         <!-- Item Label -->
-        <span class="truncate flex-1">
-            {#if renderLabel}
-                {@const labelContent = renderLabel(item)}
+        <span class="flex-1 truncate">
+			{#if renderLabel}
+				{@const labelContent = renderLabel(item)}
                 {#if typeof labelContent === 'string'}
                     {labelContent}
                 {:else if labelContent && typeof labelContent === 'object' && 'render' in labelContent}
@@ -195,50 +190,52 @@
                 {:else}
                     {item.label}
                 {/if}
-            {:else}
-                {item.label}
-            {/if}
-        </span>
+			{:else}
+				{item.label}
+			{/if}
+		</span>
 
         <!-- Drag handle (optional visual indicator) -->
         {#if enableDragDrop && !item.disabled}
-            <div class="opacity-0 group-hover:opacity-50 text-xs">⋮⋮</div>
+            <div class="text-xs opacity-0 group-hover:opacity-50">⋮⋮</div>
         {/if}
     </div>
 
     <!-- Drop indicator below -->
     {#if isDropTarget && dropPosition?.position === 'below'}
-        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10" style="left: {level * indentSize + 0.5}rem"></div>
+        <div
+                class="absolute right-0 bottom-0 left-0 z-10 h-0.5 bg-primary"
+                style="left: {level * indentSize + 0.5}rem"
+        ></div>
     {/if}
 
     <!-- Children -->
     {#if item.children?.length && expandedSet.has(item.id)}
         <div>
-            {#each item.children as child}
+            {#each item.children as child (child.id)}
                 <TreeNode
-                    item={child}
-                    level={level + 1}
-                    {expandedSet}
-                    {selectedSet}
-                    {selectedId}
-                    {multiSelect}
-                    {indentSize}
-                    {draggedItemId}
-                    {dropPosition}
-                    {enableDragDrop}
-                    {renderIcon}
-                    {renderLabel}
-                    {getItemVariant}
-                    {canDrop}
-                    {defaultGetItemVariant}
-                    {handleItemClick}
-                    {handleContextMenu}
-                    {handleKeyDown}
-                    {handleDragStart}
-                    {handleDragOver}
-                    {handleDragLeave}
-                    {handleDrop}
-                    {handleDragEnd}
+                        item={child}
+                        level={level + 1}
+                        {expandedSet}
+                        {selectedSet}
+                        {selectedId}
+                        {multiSelect}
+                        {indentSize}
+                        {draggedItemId}
+                        {dropPosition}
+                        {enableDragDrop}
+                        {renderIcon}
+                        {renderLabel}
+                        {getItemVariant}
+                        {canDrop}
+                        {handleItemClick}
+                        {handleContextMenu}
+                        {handleKeyDown}
+                        {handleDragStart}
+                        {handleDragOver}
+                        {handleDragLeave}
+                        {handleDrop}
+                        {handleDragEnd}
                 />
             {/each}
         </div>
