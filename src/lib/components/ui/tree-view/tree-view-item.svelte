@@ -104,7 +104,7 @@
 				disabled: disabled || item.disabled
 			}),
 			dragging && 'opacity-50 scale-95',
-			dropTarget && dropPosition === 'inside' && 'ring-2 ring-primary ring-offset-2 bg-primary/5',
+			dropTarget && dropPosition === 'inside' && 'ring-1 ring-primary/60 bg-primary/8 border-primary/20',
 			'group relative overflow-hidden',
 			className
 		)}
