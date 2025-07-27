@@ -2,7 +2,6 @@
 <script lang="ts" generics="T extends Record<string, unknown>">
 	import { cn } from '$lib/utils.js';
 	import { ChevronRight } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import { treeIconVariants } from './variants.js';
 	import type { TreeItem } from './types.js';
 	import type { HTMLAttributes } from 'svelte/elements';
@@ -87,16 +86,21 @@
 		onDrop?.(event);
 	}
 
-	function handleClick(event: MouseEvent) {
-		// Handle selection first
+	function handleChevronClick(event: MouseEvent) {
+		event.stopPropagation();
+		if (hasChildren) {
+			onToggle?.();
+		}
+	}
+
+	function handleFolderNameClick(event: MouseEvent) {
+		event.stopPropagation();
 		onSelect?.();
-		
-		// Handle toggle if it's a folder with children and clicked on expand icon
-		const target = event.target as HTMLElement;
-		const isExpandIcon = target.closest('.expand-icon') || 
-							 (event.offsetX < 32 && hasChildren); // Click on left side where expand icon is
-		
-		if (hasChildren && isExpandIcon) {
+	}
+
+	function handleFolderDoubleClick(event: MouseEvent) {
+		event.stopPropagation();
+		if (hasChildren) {
 			onToggle?.();
 		}
 	}
@@ -135,41 +139,50 @@
 		role="group"
 		aria-label={item.label}
 	>
-		<Button
-			variant="ghost"
-			size="sm"
-			onclick={handleClick}
-			disabled={item.disabled}
-			class={cn(
-				"h-auto w-full justify-start rounded-lg transition-all duration-200 hover:bg-accent/30 hover:shadow-sm",
-				selected && "bg-accent/80 shadow-sm"
-			)}
-			style="padding-left: {level * indentSize}rem"
-			aria-label={hasChildren ? (expanded ? 'Collapse' : 'Expand') : undefined}
-		>
+		<div class="flex items-center w-full" style="padding-left: {level * indentSize}rem">
 			<!-- Expand/Collapse Icon -->
 			{#if hasChildren}
-				<ChevronRight class={cn(treeIconVariants({ expanded }), 'size-4 text-muted-foreground')} />
+				<button
+					type="button"
+					onclick={handleChevronClick}
+					disabled={item.disabled}
+					class="flex items-center justify-center w-6 h-6 rounded hover:bg-accent/50 transition-colors"
+					aria-label={expanded ? 'Collapse' : 'Expand'}
+				>
+					<ChevronRight class={cn(treeIconVariants({ expanded }), 'size-4 text-muted-foreground')} />
+				</button>
 			{:else}
-				<div class="size-4"></div>
+				<div class="w-6 h-6"></div>
 			{/if}
 
-			<!-- Icon slot -->
-			{#if icon}
-				<div class="flex size-5 shrink-0 items-center justify-center">
-					{@render icon(expanded)}
-				</div>
-			{/if}
+			<!-- Folder content area -->
+			<button
+				type="button"
+				onclick={handleFolderNameClick}
+				ondblclick={handleFolderDoubleClick}
+				disabled={item.disabled}
+				class={cn(
+					"flex items-center flex-1 h-8 px-2 rounded transition-all duration-200 hover:bg-accent/30 hover:shadow-sm",
+					selected && "bg-accent/80 shadow-sm"
+				)}
+			>
+				<!-- Icon slot -->
+				{#if icon}
+					<div class="flex size-5 shrink-0 items-center justify-center mr-2">
+						{@render icon(expanded)}
+					</div>
+				{/if}
 
-			<!-- Label slot -->
-			{#if label}
-				<div class="flex-1 truncate text-left">
-					{@render label()}
-				</div>
-			{:else}
-				<span class="flex-1 truncate text-left">{item.label}</span>
-			{/if}
-		</Button>
+				<!-- Label slot -->
+				{#if label}
+					<div class="flex-1 truncate text-left">
+						{@render label()}
+					</div>
+				{:else}
+					<span class="flex-1 truncate text-left">{item.label}</span>
+				{/if}
+			</button>
+		</div>
 	</div>
 
 	<!-- Drop indicator below -->
