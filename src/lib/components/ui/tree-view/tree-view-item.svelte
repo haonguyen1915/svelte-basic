@@ -49,22 +49,8 @@
 
 	let itemElement: HTMLDivElement | null = $state(null);
 
-	function getDragOverPosition(event: DragEvent): 'above' | 'below' | 'inside' {
-		if (!itemElement) return 'inside';
-
-		const rect = itemElement.getBoundingClientRect();
-		const y = event.clientY - rect.top;
-		const height = rect.height;
-
-		if (y < height * 0.25) return 'above';
-		if (y > height * 0.75 && !item.children?.length && !item.isExpandable) return 'below';
-		if (y > height * 0.75 && (item.children?.length || item.isExpandable)) return 'inside';
-		return 'inside';
-	}
-
 	function handleDragOver(event: DragEvent) {
 		event.preventDefault();
-		getDragOverPosition(event);
 		onDragOver?.(event);
 	}
 

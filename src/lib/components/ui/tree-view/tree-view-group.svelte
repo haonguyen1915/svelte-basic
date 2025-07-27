@@ -56,21 +56,8 @@
 
 	let groupElement: HTMLDivElement | null = $state(null);
 
-	function getDragOverPosition(event: DragEvent): 'above' | 'below' | 'inside' {
-		if (!groupElement) return 'inside';
-
-		const rect = groupElement.getBoundingClientRect();
-		const y = event.clientY - rect.top;
-		const height = rect.height;
-
-		if (y < height * 0.25) return 'above';
-		if (y > height * 0.75 && !hasChildren) return 'below';
-		return 'inside';
-	}
-
 	function handleDragOver(event: DragEvent) {
 		event.preventDefault();
-		getDragOverPosition(event);
 		onDragOver?.(event);
 	}
 

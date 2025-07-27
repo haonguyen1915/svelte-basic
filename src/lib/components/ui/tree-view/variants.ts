@@ -55,17 +55,3 @@ export const treeIconVariants = tv({
 	}
 });
 
-export const treeGroupVariants = tv({
-	base: 'relative',
-	variants: {
-		level: {
-			0: '',
-			1: 'ml-4',
-			2: 'ml-8',
-			3: 'ml-12'
-		}
-	},
-	defaultVariants: {
-		level: 0
-	}
-});
