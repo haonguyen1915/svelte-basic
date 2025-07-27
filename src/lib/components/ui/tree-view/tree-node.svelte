@@ -1,7 +1,7 @@
 <script lang="ts">
     import {TreeViewGroup, TreeViewItem} from './index.js';
     import type {TreeItem} from './types.js';
-    import {Folder, FolderOpen, File, FileText, Image, Code, type LucideIcon} from 'lucide-svelte';
+    import {Folder, FolderOpen, File, FileText, Image, Code} from 'lucide-svelte';
     import TreeNode from './tree-node.svelte';
 
     type Props = {
@@ -18,7 +18,7 @@
         onDrop?: (event: DragEvent, item: TreeItem) => void;
         onDragEnd?: () => void;
         enableDragDrop?: boolean;
-        getIcon?: (item: TreeItem, isExpanded?: boolean) => LucideIcon;
+        getIcon?: (item: TreeItem, isExpanded?: boolean) => typeof Folder;
         class?: string;
     };
 
@@ -41,7 +41,7 @@
     }: Props = $props();
 
     // Default icon helper
-    function defaultGetIcon(item: TreeItem, isExpanded?: boolean): LucideIcon {
+    function defaultGetIcon(item: TreeItem, isExpanded?: boolean): typeof Folder {
         const type = item.data?.type;
         const ext = item.data?.extension;
 
