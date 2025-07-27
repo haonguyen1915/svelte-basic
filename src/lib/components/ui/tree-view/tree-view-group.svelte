@@ -16,6 +16,15 @@
 		icon?: import('svelte').Snippet<[boolean]>;
 		label?: import('svelte').Snippet;
 		children?: import('svelte').Snippet;
+		enableDragDrop?: boolean;
+		dragging?: boolean;
+		dropTarget?: boolean;
+		dropPosition?: 'above' | 'below' | 'inside' | null;
+		onDragStart?: (event: DragEvent) => void;
+		onDragOver?: (event: DragEvent) => void;
+		onDragLeave?: (event: DragEvent) => void;
+		onDrop?: (event: DragEvent) => void;
+		onDragEnd?: () => void;
 	}
 
 	let {
@@ -27,47 +36,128 @@
 		icon,
 		label,
 		children,
+		enableDragDrop = false,
+		dragging = false,
+		dropTarget = false,
+		dropPosition = null,
+		onDragStart,
+		onDragOver,
+		onDragLeave,
+		onDrop,
+		onDragEnd,
 		class: className,
 		...restProps
 	}: TreeViewGroupProps<T> = $props();
 
 	const hasChildren = $derived(item.children?.length || item.isExpandable);
+
+	let groupElement: HTMLDivElement | null = $state(null);
+
+	function getDragOverPosition(event: DragEvent): 'above' | 'below' | 'inside' {
+		if (!groupElement) return 'inside';
+
+		const rect = groupElement.getBoundingClientRect();
+		const y = event.clientY - rect.top;
+		const height = rect.height;
+
+		if (y < height * 0.25) return 'above';
+		if (y > height * 0.75 && !hasChildren) return 'below';
+		return 'inside';
+	}
+
+	function handleDragOver(event: DragEvent) {
+		event.preventDefault();
+		getDragOverPosition(event);
+		onDragOver?.(event);
+	}
+
+	function handleDragLeave(event: DragEvent) {
+		// Only clear if we're leaving the entire group area
+		if (groupElement && !groupElement.contains(event.relatedTarget as Node)) {
+			onDragLeave?.(event);
+		}
+	}
+
+	function handleDrop(event: DragEvent) {
+		event.preventDefault();
+		onDrop?.(event);
+	}
 </script>
 
-<div class={cn('relative', className)} {...restProps}>
+<div
+	role="treeitem"
+	aria-expanded={hasChildren ? expanded : undefined}
+	aria-disabled={item.disabled}
+	class={cn('relative', className)}
+	data-item-id={item.id}
+	{...restProps}
+>
+	<!-- Drop indicator above -->
+	{#if dropTarget && dropPosition === 'above'}
+		<div
+			class="absolute top-0 right-0 left-0 z-10 h-0.5 bg-primary animate-pulse"
+			style="left: {level * indentSize}rem"
+		></div>
+	{/if}
+
 	<!-- Group header with expand/collapse -->
-	<Button
-		variant="ghost"
-		size="sm"
-		onclick={hasChildren ? onToggle : undefined}
-		disabled={!hasChildren}
-		class="h-auto w-full justify-start rounded-lg transition-all duration-200 hover:bg-accent/30 hover:shadow-sm"
-		style="padding-left: {level * indentSize}rem"
-		aria-label={hasChildren ? (expanded ? 'Collapse' : 'Expand') : undefined}
+	<div
+		bind:this={groupElement}
+		class={cn(
+			dragging && 'opacity-50 scale-95',
+			dropTarget && dropPosition === 'inside' && 'ring-2 ring-primary ring-offset-2 bg-primary/5',
+			'relative'
+		)}
+		draggable={enableDragDrop && !item.disabled}
+		ondragstart={enableDragDrop ? onDragStart : undefined}
+		ondragover={enableDragDrop ? handleDragOver : undefined}
+		ondragleave={enableDragDrop ? handleDragLeave : undefined}
+		ondrop={enableDragDrop ? handleDrop : undefined}
+		ondragend={enableDragDrop ? onDragEnd : undefined}
+		role="group"
+		aria-label={item.label}
 	>
-		<!-- Expand/Collapse Icon -->
-		{#if hasChildren}
-			<ChevronRight class={cn(treeIconVariants({ expanded }), 'size-4 text-muted-foreground')} />
-		{:else}
-			<div class="size-4"></div>
-		{/if}
+		<Button
+			variant="ghost"
+			size="sm"
+			onclick={hasChildren ? onToggle : undefined}
+			disabled={!hasChildren || item.disabled}
+			class="h-auto w-full justify-start rounded-lg transition-all duration-200 hover:bg-accent/30 hover:shadow-sm"
+			style="padding-left: {level * indentSize}rem"
+			aria-label={hasChildren ? (expanded ? 'Collapse' : 'Expand') : undefined}
+		>
+			<!-- Expand/Collapse Icon -->
+			{#if hasChildren}
+				<ChevronRight class={cn(treeIconVariants({ expanded }), 'size-4 text-muted-foreground')} />
+			{:else}
+				<div class="size-4"></div>
+			{/if}
 
-		<!-- Icon slot -->
-		{#if icon}
-			<div class="flex size-5 shrink-0 items-center justify-center">
-				{@render icon(expanded)}
-			</div>
-		{/if}
+			<!-- Icon slot -->
+			{#if icon}
+				<div class="flex size-5 shrink-0 items-center justify-center">
+					{@render icon(expanded)}
+				</div>
+			{/if}
 
-		<!-- Label slot -->
-		{#if label}
-			<div class="flex-1 truncate text-left">
-				{@render label()}
-			</div>
-		{:else}
-			<span class="flex-1 truncate text-left">{item.label}</span>
-		{/if}
-	</Button>
+			<!-- Label slot -->
+			{#if label}
+				<div class="flex-1 truncate text-left">
+					{@render label()}
+				</div>
+			{:else}
+				<span class="flex-1 truncate text-left">{item.label}</span>
+			{/if}
+		</Button>
+	</div>
+
+	<!-- Drop indicator below -->
+	{#if dropTarget && dropPosition === 'below'}
+		<div
+			class="absolute right-0 bottom-0 left-0 z-10 h-0.5 bg-primary animate-pulse"
+			style="left: {level * indentSize}rem"
+		></div>
+	{/if}
 
 	<!-- Children -->
 	{#if expanded && children}
