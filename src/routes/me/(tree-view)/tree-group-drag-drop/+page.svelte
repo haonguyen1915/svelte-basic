@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {TreeNode} from '$lib/components/ui/tree-view';
+    import {TreeNode, getDropPosition, canDrop} from '$lib/components/ui/tree-view';
     import type {TreeItem} from '$lib/components/ui/tree-view/types';
 
     // Sample data for tree view
@@ -26,6 +26,7 @@
 
     // State management
     let expandedIds = $state(new Set(['g1-1', 'g2-1']));
+    let selectedId = $state<string | null>(null);
     let draggedItem: TreeItem | null = $state(null);
     let dropTargetId = $state('');
     let dropPosition: 'above' | 'below' | 'inside' | null = $state(null);
@@ -60,6 +61,12 @@
         }
     }
 
+    // Selection handler
+    function handleSelect(item: TreeItem) {
+        selectedId = selectedId === item.id ? null : item.id;
+        console.log("Selected item:", item.label);
+    }
+
     // Drag start handler
     function handleDragStart(event: DragEvent, item: TreeItem) {
         console.log("Drag started for item:", item);
@@ -72,22 +79,24 @@
 
     // Drag over handler
     function handleDragOver(event: DragEvent, item: TreeItem) {
+        event.preventDefault(); // Required to allow drop
+        
         if (!draggedItem || draggedItem.id === item.id) return;
 
         const target = event.currentTarget as HTMLElement;
-        const rect = target.getBoundingClientRect();
-        const y = event.clientY - rect.top;
-        const height = rect.height;
-
-        let position: 'above' | 'below' | 'inside' = 'inside';
-
-        if (y < height * 0.3) position = 'above';
-        else if (y > height * 0.7 && item.data?.type !== 'folder') position = 'below';
+        const position = getDropPosition(event, target, item);
 
         // Check if drop is allowed
         if (canDrop(draggedItem, item, position)) {
-            dropTargetId = item.id;
-            dropPosition = position;
+            // Only update if position actually changed to reduce flickering
+            if (dropTargetId !== item.id || dropPosition !== position) {
+                dropTargetId = item.id;
+                dropPosition = position;
+            }
+        } else {
+            // Clear drop indicators if drop is not allowed
+            dropTargetId = '';
+            dropPosition = null;
         }
     }
 
@@ -127,30 +136,7 @@
         dropPosition = null;
     }
 
-    // Check if drop is allowed
-    function canDrop(draggedItem: TreeItem, targetItem: TreeItem, position: 'above' | 'below' | 'inside'): boolean {
-        // Don't allow dropping onto itself
-        if (draggedItem.id === targetItem.id) return false;
 
-        // Only allow dropping inside folders
-        if (position === 'inside' && targetItem.data?.type !== 'folder') return false;
-
-        // Don't allow dropping a parent into its own descendant
-        if (isDescendant(draggedItem, targetItem.id)) return false;
-
-        return true;
-    }
-
-    // Check if targetId is a descendant of parent
-    function isDescendant(parent: TreeItem, targetId: string): boolean {
-        if (parent.children) {
-            for (const child of parent.children) {
-                if (child.id === targetId) return true;
-                if (isDescendant(child, targetId)) return true;
-            }
-        }
-        return false;
-    }
 
     // Remove item from tree
     function removeItemFromTree(items: TreeItem[], targetId: string): TreeItem[] {
@@ -204,11 +190,13 @@
                 <TreeNode
                     {item}
                     {expandedIds}
+                    {selectedId}
                     {draggedItem}
                     {dropTargetId}
                     {dropPosition}
                     enableDragDrop
                     onToggle={handleExpand}
+                    onSelect={handleSelect}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -225,6 +213,7 @@
     <div class="mt-8 p-4 bg-muted rounded-lg">
         <h3 class="font-semibold mb-2">Instructions:</h3>
         <ul class="list-disc list-inside space-y-1 text-sm">
+            <li>Click any item to select it (highlighted background)</li>
             <li>Drag any item to reorder it</li>
             <li>Drop items above or below other items to reorder</li>
             <li>Drop items onto folders to move them inside</li>
@@ -239,6 +228,7 @@
 <code class="language-json">{JSON.stringify({
     items: group1Items,
     expandedIds: Array.from(expandedIds),
+    selectedId,
     dropTargetId,
     dropPosition,
     draggedItem: draggedItem ? { id: draggedItem.id, label: draggedItem.label } : null
