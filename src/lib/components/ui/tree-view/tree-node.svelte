@@ -8,10 +8,12 @@
         item: TreeItem;
         level?: number;
         expandedIds: Set<string>;
+        selectedId?: string | null;
         draggedItem?: TreeItem | null;
         dropTargetId?: string;
         dropPosition?: 'above' | 'below' | 'inside' | null;
         onToggle?: (item: TreeItem) => void;
+        onSelect?: (item: TreeItem) => void;
         onDragStart?: (event: DragEvent, item: TreeItem) => void;
         onDragOver?: (event: DragEvent, item: TreeItem) => void;
         onDragLeave?: (event: DragEvent) => void;
@@ -26,10 +28,12 @@
         item, 
         level = 0,
         expandedIds,
+        selectedId = null,
         draggedItem = null,
         dropTargetId = '',
         dropPosition = null,
         onToggle,
+        onSelect,
         onDragStart,
         onDragOver,
         onDragLeave,
@@ -57,6 +61,7 @@
     }
 
     const isExpanded = $derived(expandedIds.has(item.id));
+    const isSelected = $derived(selectedId === item.id);
     const isDragging = $derived(draggedItem?.id === item.id);
     const isDropTarget = $derived(dropTargetId === item.id);
     const currentDropPosition = $derived(isDropTarget ? dropPosition : null);
@@ -66,7 +71,9 @@
     <TreeViewGroup
         {item}
         expanded={isExpanded}
+        selected={isSelected}
         onToggle={() => onToggle?.(item)}
+        onSelect={() => onSelect?.(item)}
         {enableDragDrop}
         dragging={isDragging}
         dropTarget={isDropTarget}
@@ -95,10 +102,12 @@
                             item={child}
                             level={level + 1}
                             {expandedIds}
+                            {selectedId}
                             {draggedItem}
                             {dropTargetId}
                             {dropPosition}
                             {onToggle}
+                            {onSelect}
                             {onDragStart}
                             {onDragOver}
                             {onDragLeave}
@@ -117,10 +126,12 @@
     <TreeViewItem
         {item}
         {level}
+        selected={isSelected}
         {enableDragDrop}
         dragging={isDragging}
         dropTarget={isDropTarget}
         dropPosition={currentDropPosition}
+        onSelect={() => onSelect?.(item)}
         onDragStart={(e) => onDragStart?.(e, item)}
         onDragOver={(e) => onDragOver?.(e, item)}
         {onDragLeave}

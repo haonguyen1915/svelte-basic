@@ -16,6 +16,7 @@
 		variant?: TreeItemVariant;
 		indentSize?: number;
 		enableDragDrop?: boolean;
+		onSelect?: () => void;
 		onDragStart?: (event: DragEvent) => void;
 		onDragOver?: (event: DragEvent) => void;
 		onDragLeave?: (event: DragEvent) => void;
@@ -35,6 +36,7 @@
 		variant = 'default',
 		indentSize = 1.5,
 		enableDragDrop = false,
+		onSelect,
 		onDragStart,
 		onDragOver,
 		onDragLeave,
@@ -98,7 +100,7 @@
 		bind:this={itemElement}
 		class={cn(
 			treeItemVariants({
-				variant: variant,
+				variant: selected ? 'selected' : variant,
 				disabled: disabled || item.disabled
 			}),
 			dragging && 'opacity-50 scale-95',
@@ -108,6 +110,7 @@
 		)}
 		style="padding-left: {level * indentSize + 0.5}rem"
 		draggable={enableDragDrop && !disabled && !item.disabled}
+		onclick={onSelect}
 		ondragstart={enableDragDrop ? onDragStart : undefined}
 		ondragover={enableDragDrop ? handleDragOver : undefined}
 		ondragleave={enableDragDrop ? handleDragLeave : undefined}

@@ -16,11 +16,11 @@ export const treeViewVariants = tv({
 });
 
 export const treeItemVariants = tv({
-	base: 'flex items-center gap-2 py-0.5 px-2 rounded-md cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 relative',
+	base: 'flex items-center gap-2 py-0.5 px-2 rounded-md cursor-pointer transition-all duration-200 focus:outline-none relative',
 	variants: {
 		variant: {
 			default: 'hover:bg-accent/50 hover:shadow-sm',
-			selected: 'bg-accent border border-accent-foreground/20 shadow-sm',
+			selected: 'bg-accent/80 shadow-sm',
 			active: 'bg-accent text-accent-foreground',
 			ghost: 'hover:bg-transparent'
 		},

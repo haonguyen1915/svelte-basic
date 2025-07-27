@@ -10,9 +10,11 @@
 	interface TreeViewGroupProps<T extends Record<string, unknown>> extends HTMLAttributes<HTMLDivElement> {
 		item: TreeItem<T>;
 		expanded?: boolean;
+		selected?: boolean;
 		level?: number;
 		indentSize?: number;
 		onToggle?: () => void;
+		onSelect?: () => void;
 		icon?: import('svelte').Snippet<[boolean]>;
 		label?: import('svelte').Snippet;
 		children?: import('svelte').Snippet;
@@ -30,9 +32,11 @@
 	let {
 		item,
 		expanded = false,
+		selected = false,
 		level = 0,
 		indentSize = 1.5,
 		onToggle,
+		onSelect,
 		icon,
 		label,
 		children,
@@ -82,6 +86,20 @@
 		event.preventDefault();
 		onDrop?.(event);
 	}
+
+	function handleClick(event: MouseEvent) {
+		// Handle selection first
+		onSelect?.();
+		
+		// Handle toggle if it's a folder with children and clicked on expand icon
+		const target = event.target as HTMLElement;
+		const isExpandIcon = target.closest('.expand-icon') || 
+							 (event.offsetX < 32 && hasChildren); // Click on left side where expand icon is
+		
+		if (hasChildren && isExpandIcon) {
+			onToggle?.();
+		}
+	}
 </script>
 
 <div
@@ -120,9 +138,12 @@
 		<Button
 			variant="ghost"
 			size="sm"
-			onclick={hasChildren ? onToggle : undefined}
-			disabled={!hasChildren || item.disabled}
-			class="h-auto w-full justify-start rounded-lg transition-all duration-200 hover:bg-accent/30 hover:shadow-sm"
+			onclick={handleClick}
+			disabled={item.disabled}
+			class={cn(
+				"h-auto w-full justify-start rounded-lg transition-all duration-200 hover:bg-accent/30 hover:shadow-sm",
+				selected && "bg-accent/80 shadow-sm"
+			)}
 			style="padding-left: {level * indentSize}rem"
 			aria-label={hasChildren ? (expanded ? 'Collapse' : 'Expand') : undefined}
 		>
