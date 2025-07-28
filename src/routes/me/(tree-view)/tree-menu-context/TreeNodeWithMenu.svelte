@@ -73,6 +73,18 @@
 	const isExpanded = $derived(expandedIds.has(item.id));
 	const isSelected = $derived(selectedId === item.id);
 	const isEditing = $derived(editingId === item.id);
+	
+	let inputElement = $state<HTMLInputElement | null>(null);
+	
+	$effect(() => {
+		if (isEditing && inputElement) {
+			// Small delay to ensure the DOM is updated
+			setTimeout(() => {
+				inputElement?.focus();
+				inputElement?.select();
+			}, 0);
+		}
+	});
 </script>
 
 <ContextMenu>
@@ -82,9 +94,11 @@
 			<div class="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent" style="margin-left: {level * 16}px">
 				<Icon class="h-4 w-4 text-muted-foreground" />
 				<Input
+					bind:ref={inputElement}
 					value={editValue}
 					oninput={(e) => onEditValueChange?.(e.currentTarget.value)}
 					onkeydown={(e) => {
+						e.stopPropagation();
 						if (e.key === 'Enter') {
 							onConfirmRename?.();
 						} else if (e.key === 'Escape') {
@@ -94,6 +108,7 @@
 					}}
 					class="h-6 px-1 py-0 text-sm flex-1"
 					onclick={(e) => e.stopPropagation()}
+					onmousedown={(e) => e.stopPropagation()}
 				/>
 			</div>
 		{:else if isFolder(item)}
