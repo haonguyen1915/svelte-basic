@@ -90,6 +90,10 @@
 		editValue = '';
 	}
 
+	function cancelRename() {
+		cancelEdit();
+	}
+
 	function handleCopy(item: TreeItem) {
 		copiedItem = structuredClone(item);
 		lastAction = `Copied: ${item.label}`;
@@ -279,6 +283,7 @@
 					onNewFile={handleNewFile}
 					onEditValueChange={(value) => editValue = value}
 					onConfirmRename={confirmRename}
+					onCancelRename={cancelRename}
 					{getIcon}
 				/>
 			{/each}

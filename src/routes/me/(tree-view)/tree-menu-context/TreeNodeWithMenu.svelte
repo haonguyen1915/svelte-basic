@@ -33,6 +33,7 @@
 		onNewFile?: (item: TreeItem) => void;
 		onEditValueChange?: (value: string) => void;
 		onConfirmRename?: () => void;
+		onCancelRename?: () => void;
 		getIcon?: (item: TreeItem, isExpanded?: boolean) => typeof Folder;
 		class?: string;
 	};
@@ -55,6 +56,7 @@
 		onNewFile,
 		onEditValueChange,
 		onConfirmRename,
+		onCancelRename,
 		getIcon = defaultGetIcon,
 		class: className = ''
 	}: Props = $props();
@@ -106,6 +108,9 @@
 							onConfirmRename?.();
 						}
 					}}
+					onblur={() => {
+						onCancelRename?.();
+					}}
 					class="h-6 px-1 py-0 text-sm flex-1"
 					onclick={(e) => e.stopPropagation()}
 					onmousedown={(e) => e.stopPropagation()}
@@ -151,6 +156,7 @@
 									{onNewFile}
 									{onEditValueChange}
 									{onConfirmRename}
+									{onCancelRename}
 									{getIcon}
 									class={className}
 								/>
